@@ -9,7 +9,17 @@ two_sum([2, 7, 11, 15], 9) -> (0, 1)
 """
 
 def two_sum(nums: list, target: int) -> tuple:
-    pass
+    seen = {}
+    for i in range(len(nums) - 1, -1, -1):
+        x = nums[i]
+        need = target - x
+        if need in seen:
+            j = seen[need]
+            return (i, j) if i < j else (j, i)
+        seen[x] = i
+    raise ValueError("No two sum solution")
+
+
 
 """
 💎 Exercise-2: Isomorphic Strings
@@ -22,7 +32,22 @@ is_isomorphic('egg', 'add') -> True
 """
 
 def is_isomorphic(s: str, t: str) -> bool:
-    pass
+    if len(s) != len(t):
+        return False
+
+    st, ts = {}, {}
+    for cs, ct in zip(s, t):
+        if cs in st and st[cs] != ct:
+            return False
+        if ct in ts and ts[ct] != cs:
+            return False
+        st[cs] = ct
+        ts[ct] = cs
+
+    keys = sorted(st.keys())
+    mapped = [st[k] for k in keys]
+    return all(ord(mapped[i]) < ord(mapped[i+1]) for i in range(len(mapped)-1))
+
 
 """
 💎 Exercise-3: Check Alien Dictionary
@@ -34,7 +59,17 @@ is_alien_sorted(["hello","leetcode"], "hlabcdefgijkmnopqrstuvwxyz") -> True
 """
 
 def is_alien_sorted(words: list, order: str) -> bool:
-    pass
+    rank = {ch: i for i, ch in enumerate(order)}
+
+    def in_order(a: str, b: str) -> bool:
+        for ca, cb in zip(a, b):
+            if ca == cb:
+                continue
+            return rank[ca] < rank[cb]
+        return len(a) <= len(b)
+
+    return all(in_order(words[i], words[i + 1]) for i in range(len(words) - 1))
+
 
 """
 💎 Exercise-4: Longest Substring Without Repeating Characters
@@ -46,7 +81,16 @@ length_of_longest_substring('abcabcbb') -> 3
 """
 
 def length_of_longest_substring(s: str) -> int:
-    pass
+    last = {}
+    left = 0
+    best = 0
+    for right, ch in enumerate(s):
+        if ch in last and last[ch] >= left:
+            left = last[ch] + 1
+        last[ch] = right
+        best = max(best, right - left + 1)
+    return best
+
 
 """
 💎 Exercise-5: Group Shifted Strings
@@ -59,5 +103,53 @@ Example:
 group_shifted(["abc", "bcd", "acef", "xyz", "az", "ba", "a", "z"]) -> [["abc","bcd"],["acef"],["xyz"],["az","ba"],["a","z"]]
 """
 
+from collections import defaultdict, deque
+
 def group_shifted(strings: list) -> list:
-    pass
+    if not strings:
+        return []
+    idx2word = {i: s for i, s in enumerate(strings)}
+    singles_idx = [i for i, s in enumerate(strings) if len(s) == 1]
+    multi_idx = [i for i, s in enumerate(strings) if len(s) != 1]
+
+    def shift_plus_one(word: str) -> str:
+        return "".join(chr((ord(c) - 97 + 1) % 26 + 97) for c in word)
+
+    by_len = defaultdict(list)
+    for i in multi_idx:
+        by_len[len(idx2word[i])].append(i)
+
+    words_by_len = {L: {idx2word[i]: i for i in idxs} for L, idxs in by_len.items()}
+
+    adj = defaultdict(list)
+    for L, idxs in by_len.items():
+        present = words_by_len[L]
+        for i in idxs:
+            w = idx2word[i]
+            w_next = shift_plus_one(w)
+            if w_next in present:
+                j = present[w_next]
+                adj[i].append(j)
+                adj[j].append(i)
+
+    visited = set()
+    components = []
+    for i in multi_idx:
+        if i in visited:
+            continue
+        q = deque([i])
+        visited.add(i)
+        comp = []
+        while q:
+            v = q.popleft()
+            comp.append(v)
+            for u in adj[v]:
+                if u not in visited:
+                    visited.add(u)
+                    q.append(u)
+        comp.sort()
+        components.append([idx2word[k] for k in comp])
+
+    if singles_idx:
+        components.append([idx2word[i] for i in singles_idx])
+    return components
